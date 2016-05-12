@@ -16,6 +16,7 @@ var ReactQiniu = React.createClass({
         token: React.PropTypes.string.isRequired,
         // called before upload to set callback to files
         onUpload: React.PropTypes.func,
+        downloadUrl: React.PropTypes.string,
         size: React.PropTypes.number,
         style: React.PropTypes.object,
         supportClick: React.PropTypes.bool,
@@ -76,10 +77,18 @@ var ReactQiniu = React.createClass({
             this.props.onUpload(files, e);
         }
 
+        const me = this;
         for (var i = 0; i < maxFiles; i++) {
+            var file = files[i];
             files[i].preview = URL.createObjectURL(files[i]);
             files[i].request = this.upload(files[i]);
-            files[i].uploadPromise = files[i].request.promise();
+            files[i].uploadPromise = files[i].request
+            .then(function(res) {
+                const data = JSON.parse(res.text);
+                me.getDownloadUrl(me, file, data);
+            }, function(error) {
+                if (isFunction(file.onUploadedError)) files[i].onUploadedError(error);
+            });
         }
 
         if (this.props.onDrop) {
@@ -116,6 +125,21 @@ var ReactQiniu = React.createClass({
             .set('Accept', 'application/json');
         if (isFunction(file.onprogress)) { r.on('progress', file.onprogress); }
         return r;
+    },
+
+    getDownloadUrl: function(me, file, data){
+        if(!me.props.downloadUrl){
+            if (isFunction(file.onUploaded)) file.onUploaded(data);
+            return false;
+        }
+        var downloadFullUrl = (/\?/.test(me.props.downloadUrl)) ? me.props.downloadUrl + '&key=' + data.key : me.props.downloadUrl + '?key=' + data.key;
+        var downloadR = request.get(downloadFullUrl)
+        .then(function(res) {
+            const data2 = JSON.parse(res.text);
+            data.downloadUrl = data2.item.url;
+            if (isFunction(file.onUploaded)) file.onUploaded(data);
+        });
+        return downloadR;
     },
 
     render: function() {
