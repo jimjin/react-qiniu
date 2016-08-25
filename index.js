@@ -104,7 +104,7 @@ var ReactQiniu = React.createClass({
     },
 
     open: function() {
-        var fileInput = React.findDOMNode(this.refs.fileInput);
+        var fileInput = this.refs.fileInput;
         fileInput.value = null;
         fileInput.click();
     },
